@@ -49,8 +49,8 @@ index_map <- matrix(NA, nrow = grid_width, ncol = grid_width)
 num_has_space <- 0
 has_space <- list()
 how_many_spaces <- list()
-for(x in 2:(grid_width - 1)) for(y in 2:(grid_width - 1)) {
-  candidate <- c(x, y)
+for(i in 1:num_occupied) {
+  candidate <- occupied[[i]]
   spaces <- count_spaces(candidate, nhood_type)
   # if not all neighbours are occupied then add the site to the list:
   if(sites[candidate[1], candidate[2]] > 0 && spaces > 0) {
