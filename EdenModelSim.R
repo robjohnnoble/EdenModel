@@ -4,16 +4,16 @@
 
 # get the neighbourhood of a site:
 nhood <- function(x, y, type = "von Neumann") {
-  if(type != "Moore" && type != "von Neumann") stop("Neighbourhood type must be either Moore or von Neumann")
-  if(type == "Moore") return(list(c(x - 1, y), c(x + 1, y), c(x, y - 1), c(x, y + 1),
-                                                   c(x - 1, y - 1), c(x + 1, y + 1), c(x - 1, y + 1), c(x + 1, y - 1)))
-  else return(list(c(x - 1, y), c(x + 1, y), c(x, y - 1), c(x, y + 1)))
+  l1 <- list(c(x - 1, y), c(x + 1, y), c(x, y - 1), c(x, y + 1))
+  if(type == "von Neumann") l2 <- list()
+  else if(type == "Moore") l2 <- list(c(x - 1, y - 1), c(x + 1, y + 1), c(x - 1, y + 1), c(x + 1, y - 1))
+  else stop("Neighbourhood type must be either Moore or von Neumann")
+  return(c(l1, l2))
 }
 
 # count the empty spaces in a neighbourhood:
 count_spaces <- function(candidate, nhood_type) {
   neighbours <- nhood(candidate[1], candidate[2], nhood_type)
-  count <- 0
   return(nhood_size - sum(sign(sapply(neighbours, function(e) sites[e[1], e[2]]))))
 }
 
@@ -24,7 +24,7 @@ count_spaces <- function(candidate, nhood_type) {
 grid_width <- 100 # width of the grid
 nhood_type <- "von Neumann" # neighbourhood type
 set.seed(5) # seed for random number generator (for replicable results)
-occupied <- list(c(ceiling(grid_width/2), ceiling(grid_width/2))) # list of initially occupied sites
+init_diameter <- 1 # population diameter
 max_iter <- 1E4 # set a max number of iterations (just in case)
 mutation_rate <- 0 # mutation rate per cell division
 mutation_effect <- 0 # fitness effect per mutation
@@ -35,6 +35,11 @@ mutation_effect <- 0 # fitness effect per mutation
 
 # initialise the site states:
 sites <- matrix(0, nrow = grid_width, ncol = grid_width)
+centre <- (init_diameter + 1)/2
+occupied <- list()
+for(i in 1:init_diameter) for(j in 1:init_diameter) if((i - centre)^2 + (j - centre)^2 < (init_diameter/2)^2) {
+    occupied <- c(occupied, list(c(floor(grid_width/2 - init_diameter/2 + i), floor(grid_width/2 - init_diameter/2 + j))))
+}
 num_occupied <- length(occupied) # number of occupied sites
 for(i in 1:num_occupied) sites[occupied[[i]][1], occupied[[i]][2]] <- 1
 
@@ -144,10 +149,13 @@ for(iter in 1:max_iter) {
 par(mfrow = c(2, 2))
 
 # plot the occupied sites,
-# after changing the value assigned to empty sites (for clearer plotting):
+# after rescaling their values (for clearer plotting):
 num_types <- length(unique(as.numeric(sites))) # number of unique fitness values
 sites_for_plot <- sites
-if(num_types > 2) sites_for_plot[which(sites_for_plot == 0)] <- min(sites[which(sites > 0)]) - (max(sites) - min(sites[which(sites > 0)])) / 3
+if(num_types > 2) {
+  ll <- sites_for_plot[which(sites_for_plot > 0)]
+  sites_for_plot[which(sites_for_plot > 0)] <- min(num_types - 2, 4) * (ll - min(ll)) / (max(ll) - min(ll)) + 1
+}
 image(sites_for_plot, main = "Max relative\nfitness", col = c("black", heat.colors(num_types - 1)))
 
 # plot the numbers of empty neighbours:
