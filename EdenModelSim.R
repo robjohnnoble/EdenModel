@@ -26,8 +26,8 @@ nhood_type <- "von Neumann" # neighbourhood type
 set.seed(5) # seed for random number generator (for replicable results)
 init_diameter <- 1 # population diameter
 max_iter <- 1E4 # set a max number of iterations (just in case)
-mutation_rate <- 0 # mutation rate per cell division
-mutation_effect <- 0 # fitness effect per mutation
+mutation_rate <- 0.1 # mutation rate per cell division
+mean_mutation_effect <- 0.1 # mean fitness effect per mutation
 
 ################################### 
 ####### intialisation:
@@ -38,7 +38,7 @@ sites <- matrix(0, nrow = grid_width, ncol = grid_width)
 centre <- (init_diameter + 1)/2
 occupied <- list()
 for(i in 1:init_diameter) for(j in 1:init_diameter) if((i - centre)^2 + (j - centre)^2 < (init_diameter/2)^2) {
-    occupied <- c(occupied, list(c(floor(grid_width/2 - init_diameter/2 + i), floor(grid_width/2 - init_diameter/2 + j))))
+  occupied <- c(occupied, list(c(floor(grid_width/2 - init_diameter/2 + i), floor(grid_width/2 - init_diameter/2 + j))))
 }
 num_occupied <- length(occupied) # number of occupied sites
 for(i in 1:num_occupied) sites[occupied[[i]][1], occupied[[i]][2]] <- 1
@@ -75,7 +75,7 @@ output_df <- data.frame(Time = timer, Population = num_occupied)
 ################################### 
 
 for(iter in 1:max_iter) {
-  # pick a cell to divide:
+  # pick a cell to divide, where probability of picking a cell is proportional to its number of neighbouring empty sites:
   candidate <- sample(1:num_has_space, 1, prob = unlist(how_many_spaces) * sapply(has_space, function(e) sites[e[1], e[2]]))
   # find the cell's neighbours:
   neighbours <- nhood(has_space[[candidate]][1], has_space[[candidate]][2], nhood_type)
@@ -93,8 +93,12 @@ for(iter in 1:max_iter) {
       new_site <- neighbours[[i]]
       parent_site <- has_space[[candidate]]
       # mutation:
-      if(runif(1) < mutation_rate) sites[new_site[1], new_site[2]] <- (1 + mutation_effect) * sites[parent_site[1], parent_site[2]]
-      else sites[new_site[1], new_site[2]] <- sites[parent_site[1], parent_site[2]]
+      num_mutations <- rpois(1, mutation_rate) # number of new mutations drawn from a Poisson distribution
+      sites[new_site[1], new_site[2]] <- sites[parent_site[1], parent_site[2]]
+      if(num_mutations > 0) for(j in 1:num_mutations) {
+        mutation_effect <- rexp(1, 1/mean_mutation_effect) # fitness effect per mutation drawn from an exponential distribution
+        sites[new_site[1], new_site[2]] <- (1 + mutation_effect) * sites[new_site[1], new_site[2]]
+      }
       break
     }
   }
@@ -169,5 +173,4 @@ image(space_grid, main = "Number of\nempty neighbours", col = c("black", heat.co
 # plot the growth curves of population and equivalent radius:
 plot(Population ~ Time, data = output_df, type = "l", main = "Population growth")
 plot(sqrt(Population / pi) ~ Time, data = output_df, type = "l", ylab = "Equivalent radius", main = "Equivalent\nradius growth")
-
 
